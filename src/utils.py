@@ -3,14 +3,15 @@ from torchvision import datasets, transforms
 from torch.utils.data import random_split
 
 def get_data_loaders(batch_size):
-    # Define transformations
+    # Enhanced augmentation transforms
     train_transform = transforms.Compose([
-        transforms.RandomRotation(5),
-        transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+        transforms.RandomRotation(15),
+        transforms.RandomAffine(degrees=0, translate=(0.12, 0.12), scale=(0.95, 1.05)),
         transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))
-    ])
-    
+        transforms.Normalize((0.1307,), (0.3081,)),
+        transforms.RandomErasing(p=0.25, scale=(0.02, 0.15))
+])
+
     test_transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))

@@ -3,20 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
 
-# Enhanced augmentation transforms
-train_transform = transforms.Compose([
-    transforms.RandomRotation(15),
-    transforms.RandomAffine(degrees=0, translate=(0.12, 0.12), scale=(0.95, 1.05)),
-    transforms.ToTensor(),
-    transforms.Normalize((0.1307,), (0.3081,)),
-    transforms.RandomErasing(p=0.25, scale=(0.02, 0.15))
-])
-
-test_transform = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize((0.1307,), (0.3081,))
-])
-
 dropout_value = 0.1
 
 class Net(nn.Module):

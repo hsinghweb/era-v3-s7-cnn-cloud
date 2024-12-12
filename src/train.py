@@ -79,10 +79,9 @@ def main():
             
         scheduler.step(accuracy)
         
-        # Early stopping if accuracy reaches target
+        # Print if accuracy reaches target
         if accuracy >= target_accuracy:
             print(f"\nReached target accuracy of {target_accuracy}% at epoch {epoch}")
-            break
     
     print("\nTraining Complete!")
     print("=" * 50)
