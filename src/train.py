@@ -46,6 +46,8 @@ def train(model, device, train_loader, optimizer, epoch):
     pbar.set_description(desc= f'Loss={loss.item()} Batch_id={batch_idx} Accuracy={100*correct/processed:0.2f}')
     train_acc.append(100*correct/processed)
 
+  return 100*correct/processed  # Return the final training accuracy
+
 def test(model, device, test_loader):
     model.eval()
     test_loss = 0
@@ -61,11 +63,13 @@ def test(model, device, test_loader):
     test_loss /= len(test_loader.dataset)
     test_losses.append(test_loss)
 
+    accuracy = 100. * correct / len(test_loader.dataset)
+    test_acc.append(accuracy)
+
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)\n'.format(
-        test_loss, correct, len(test_loader.dataset),
-        100. * correct / len(test_loader.dataset)))
+        test_loss, correct, len(test_loader.dataset), accuracy))
     
-    test_acc.append(100. * correct / len(test_loader.dataset))
+    return test_loss, accuracy  # Return both test loss and accuracy
 
 
 def main():
@@ -76,18 +80,35 @@ def main():
     summary(model, input_size=(1, 28, 28))
     BATCH_SIZE = 128
 
-    model =  Net().to(device)
+    model = Net().to(device)
     optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-    # scheduler = StepLR(optimizer, step_size=6, gamma=0.1)
 
     train_loader, test_loader = get_data_loaders(BATCH_SIZE)
 
+    best_train_acc = 0
+    best_test_acc = 0
+    best_test_epoch = 0
+    
     EPOCHS = 20
     for epoch in range(EPOCHS):
         print("EPOCH:", epoch)
-        train(model, device, train_loader, optimizer, epoch)
-        # scheduler.step()
-        test(model, device, test_loader)
+        train_acc = train(model, device, train_loader, optimizer, epoch)
+        test_loss, test_acc = test(model, device, test_loader)
+        
+        # Update best accuracies
+        best_train_acc = max(best_train_acc, train_acc)
+        if test_acc > best_test_acc:
+            best_test_acc = test_acc
+            best_test_epoch = epoch + 1
+
+    # Print final summary
+    total_params = sum(p.numel() for p in model.parameters())
+    print("\n===================")
+    print("Results:")
+    print(f"Parameters: {total_params/1000:.1f}k")
+    print(f"Best Train Accuracy: {best_train_acc:.2f}")
+    print(f"Best Test Accuracy: {best_test_acc:.2f} ({best_test_epoch}th Epoch)")
+    print("===================")
 
 
 
