@@ -1,81 +1,101 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision import transforms
+
+# Enhanced augmentation transforms
+train_transform = transforms.Compose([
+    transforms.RandomRotation(15),
+    transforms.RandomAffine(degrees=0, translate=(0.12, 0.12), scale=(0.95, 1.05)),
+    transforms.ToTensor(),
+    transforms.Normalize((0.1307,), (0.3081,)),
+    transforms.RandomErasing(p=0.25, scale=(0.02, 0.15))
+])
+
+test_transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.1307,), (0.3081,))
+])
+
+dropout_value = 0.1
 
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        # First Block
-        self.conv1 = nn.Conv2d(1, 8, 3, padding=1)  # Output 8 channels
-        self.bn1 = nn.BatchNorm2d(8)
-        
-        # Second Block
-        self.conv2 = nn.Conv2d(8, 12, 3, padding=1)  # Output 12 channels
-        self.bn2 = nn.BatchNorm2d(12)
-        self.pool1 = nn.MaxPool2d(2, 2)
-        self.dropout1 = nn.Dropout(0.1)
-        
-        # Third Block
-        self.conv3 = nn.Conv2d(12, 16, 3, padding=1)  # Output 16 channels
-        self.bn3 = nn.BatchNorm2d(16)
-        self.pool2 = nn.MaxPool2d(2, 2)
-        self.dropout2 = nn.Dropout(0.1)
-        
-        # Fourth Block with parallel paths
-        self.conv4_1x1 = nn.Conv2d(16, 16, 1)  # Keep 16 channels
-        self.conv4_main = nn.Conv2d(16, 16, 3, padding=1)
-        self.bn4 = nn.BatchNorm2d(16)
-        
-        # Fifth Block with attention
-        self.conv5 = nn.Conv2d(16, 16, 3, padding=1)
-        self.bn5 = nn.BatchNorm2d(16)
-        self.attention = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Conv2d(16, 8, 1),
+        # Input Block
+        self.convblock1 = nn.Sequential(
+            nn.Conv2d(in_channels=1, out_channels=16, kernel_size=(3, 3), padding=0, bias=False),
             nn.ReLU(),
-            nn.Conv2d(8, 16, 1),
-            nn.Sigmoid()
-        )
+            nn.BatchNorm2d(16),
+            nn.Dropout(dropout_value)
+        ) # output_size = 26
+
+        # CONVOLUTION BLOCK 1
+        self.convblock2 = nn.Sequential(
+            nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(3, 3), padding=0, bias=False),
+            nn.ReLU(),
+            nn.BatchNorm2d(32),
+            nn.Dropout(dropout_value)
+        ) # output_size = 24
+
+        # TRANSITION BLOCK 1
+        self.convblock3 = nn.Sequential(
+            nn.Conv2d(in_channels=32, out_channels=10, kernel_size=(1, 1), padding=0, bias=False),
+        ) # output_size = 24
+        self.pool1 = nn.MaxPool2d(2, 2) # output_size = 12
+
+        # CONVOLUTION BLOCK 2
+        self.convblock4 = nn.Sequential(
+            nn.Conv2d(in_channels=10, out_channels=16, kernel_size=(3, 3), padding=0, bias=False),
+            nn.ReLU(),            
+            nn.BatchNorm2d(16),
+            nn.Dropout(dropout_value)
+        ) # output_size = 10
+        self.convblock5 = nn.Sequential(
+            nn.Conv2d(in_channels=16, out_channels=16, kernel_size=(3, 3), padding=0, bias=False),
+            nn.ReLU(),            
+            nn.BatchNorm2d(16),
+            nn.Dropout(dropout_value)
+        ) # output_size = 8
+        self.convblock6 = nn.Sequential(
+            nn.Conv2d(in_channels=16, out_channels=16, kernel_size=(3, 3), padding=0, bias=False),
+            nn.ReLU(),            
+            nn.BatchNorm2d(16),
+            nn.Dropout(dropout_value)
+        ) # output_size = 6
+        self.convblock7 = nn.Sequential(
+            nn.Conv2d(in_channels=16, out_channels=16, kernel_size=(3, 3), padding=1, bias=False),
+            nn.ReLU(),            
+            nn.BatchNorm2d(16),
+            nn.Dropout(dropout_value)
+        ) # output_size = 6
         
-        # Sixth Block (new)
-        self.conv6 = nn.Conv2d(16, 16, 3, padding=1)
-        self.bn6 = nn.BatchNorm2d(16)
-        self.dropout3 = nn.Dropout(0.1)
-        
-        # Global Average Pooling
-        self.gap = nn.AdaptiveAvgPool2d(1)
-        
-        # Final FC Layer
-        self.fc = nn.Linear(16, 10)
+        # OUTPUT BLOCK
+        self.gap = nn.Sequential(
+            nn.AvgPool2d(kernel_size=6)
+        ) # output_size = 1
+
+        self.convblock8 = nn.Sequential(
+            nn.Conv2d(in_channels=16, out_channels=10, kernel_size=(1, 1), padding=0, bias=False),
+            # nn.BatchNorm2d(10),
+            # nn.ReLU(),
+            # nn.Dropout(dropout_value)
+        ) 
+
+
+        self.dropout = nn.Dropout(dropout_value)
 
     def forward(self, x):
-        # First Block
-        x = F.relu(self.bn1(self.conv1(x)))
-        
-        # Second Block
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = self.dropout1(self.pool1(x))
-        
-        # Third Block
-        x = F.relu(self.bn3(self.conv3(x)))
-        x = self.dropout2(self.pool2(x))
-        
-        # Fourth Block with parallel paths
-        x_1x1 = self.conv4_1x1(x)
-        x_main = F.relu(self.bn4(self.conv4_main(x)))
-        x = x_main + F.relu(x_1x1)  # residual connection
-        
-        # Fifth Block with attention
-        x = F.relu(self.bn5(self.conv5(x)))
-        att = self.attention(x)
-        x = x * att
-        
-        # Sixth Block (new)
-        x = F.relu(self.bn6(self.conv6(x)))
-        x = self.dropout3(x)
-        
-        # GAP and FC
-        x = self.gap(x)
-        x = x.view(-1, 16)
-        x = self.fc(x)
-        return F.log_softmax(x, dim=1) 
+        x = self.convblock1(x)
+        x = self.convblock2(x)
+        x = self.convblock3(x)
+        x = self.pool1(x)
+        x = self.convblock4(x)
+        x = self.convblock5(x)
+        x = self.convblock6(x)
+        x = self.convblock7(x)
+        x = self.gap(x)        
+        x = self.convblock8(x)
+
+        x = x.view(-1, 10)
+        return F.log_softmax(x, dim=-1)
