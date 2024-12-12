@@ -28,7 +28,5 @@ jobs:
       with:
         name: training-artifacts
         path: |
-          model.pth
           best_model.pth
-          *.png
           logs/
