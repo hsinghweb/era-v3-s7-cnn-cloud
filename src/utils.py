@@ -3,42 +3,47 @@ from torchvision import datasets, transforms
 from torch.utils.data import random_split
 
 def get_data_loaders(batch_size):
-    # Enhanced augmentation transforms
-    train_transform = transforms.Compose([
-        transforms.RandomRotation(15),
-        transforms.RandomAffine(degrees=0, translate=(0.12, 0.12), scale=(0.95, 1.05)),
+    # Train Phase transformations
+    train_transforms = transforms.Compose([
+        #  transforms.Resize((28, 28)),
+        #  transforms.ColorJitter(brightness=0.10, contrast=0.1, saturation=0.10, hue=0.1),
+        transforms.RandomRotation((-7.0, 7.0), fill=(1,)),
         transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,)),
-        transforms.RandomErasing(p=0.25, scale=(0.02, 0.15))
-])
+        transforms.Normalize((0.1307,), (0.3081,)) # The mean and std have to be sequences (e.g., tuples), therefore you should add a comma after the values. 
+        # Note the difference between (0.1307) and (0.1307,)
+        ])
 
-    test_transform = transforms.Compose([
+    # Test Phase transformations
+    test_transforms = transforms.Compose([
+        #  transforms.Resize((28, 28)),
+        #  transforms.ColorJitter(brightness=0.10, contrast=0.1, saturation=0.10, hue=0.1),
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
-    ])
+        ])
 
-    # Load full training dataset
-    full_train_dataset = datasets.MNIST('../data', train=True, download=True,
-                                      transform=train_transform)
-    
-    # Split training dataset into train and validation
-    train_size = 50000  # 50k for training
-    val_size = 10000    # 10k for validation/test
-    
-    train_dataset, _ = random_split(full_train_dataset, 
-                                  [train_size, val_size],
-                                  generator=torch.Generator().manual_seed(42))
-    
-    # Use the test set as our validation/test set
-    val_dataset = datasets.MNIST('../data', train=False,
-                               transform=test_transform)
+    train = datasets.MNIST('./data', train=True, download=True, transform=train_transforms)
+    test = datasets.MNIST('./data', train=False, download=True, transform=test_transforms)
 
-    # Create data loaders
-    train_loader = torch.utils.data.DataLoader(train_dataset,
-                                             batch_size=batch_size,
-                                             shuffle=True)
-    val_loader = torch.utils.data.DataLoader(val_dataset,
-                                           batch_size=batch_size,
-                                           shuffle=False)
-    
-    return train_loader, val_loader 
+    SEED = 1
+
+    # CUDA?
+    cuda = torch.cuda.is_available()
+    print("CUDA Available?", cuda)
+
+    # For reproducibility
+    torch.manual_seed(SEED)
+
+    if cuda:
+        torch.cuda.manual_seed(SEED)
+
+    # dataloader arguments - something you'll fetch these from cmdprmt
+    dataloader_args = dict(shuffle=True, batch_size=128, num_workers=4, pin_memory=True) if cuda else dict(shuffle=True, batch_size=64)
+
+    # train dataloader
+    train_loader = torch.utils.data.DataLoader(train, **dataloader_args)
+
+    # test dataloader
+    test_loader = torch.utils.data.DataLoader(test, **dataloader_args)
+
+
+    return train_loader, test_loader 

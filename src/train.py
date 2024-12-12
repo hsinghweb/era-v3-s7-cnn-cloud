@@ -1,27 +1,52 @@
 import torch
 import torch.nn.functional as F
+import torch.optim as optim
 from tqdm import tqdm
 from model import Net
 from config import *
 from utils import get_data_loaders
+from torchsummary import summary
 
-def count_parameters(model):
-    return sum(p.numel() for p in model.parameters())
+train_losses = []
+test_losses = []
+train_acc = []
+test_acc = []
 
 def train(model, device, train_loader, optimizer, epoch):
-    model.train()
-    running_loss = 0.0
-    for batch_idx, (data, target) in enumerate(train_loader):
-        data, target = data.to(device), target.to(device)
-        optimizer.zero_grad()
-        output = model(data)
-        loss = F.nll_loss(output, target)
-        loss.backward()
-        optimizer.step()
-        running_loss += loss.item()
-    return running_loss / len(train_loader)
+  model.train()
+  pbar = tqdm(train_loader)
+  correct = 0
+  processed = 0
+  for batch_idx, (data, target) in enumerate(pbar):
+    # get samples
+    data, target = data.to(device), target.to(device)
 
-def test(model, device, test_loader, epoch):
+    # Init
+    optimizer.zero_grad()
+    # In PyTorch, we need to set the gradients to zero before starting to do backpropragation because PyTorch accumulates the gradients on subsequent backward passes. 
+    # Because of this, when you start your training loop, ideally you should zero out the gradients so that you do the parameter update correctly.
+
+    # Predict
+    y_pred = model(data)
+
+    # Calculate loss
+    loss = F.nll_loss(y_pred, target)
+    train_losses.append(loss)
+
+    # Backpropagation
+    loss.backward()
+    optimizer.step()
+
+    # Update pbar-tqdm
+    
+    pred = y_pred.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+    correct += pred.eq(target.view_as(pred)).sum().item()
+    processed += len(data)
+
+    pbar.set_description(desc= f'Loss={loss.item()} Batch_id={batch_idx} Accuracy={100*correct/processed:0.2f}')
+    train_acc.append(100*correct/processed)
+
+def test(model, device, test_loader):
     model.eval()
     test_loss = 0
     correct = 0
@@ -29,73 +54,43 @@ def test(model, device, test_loader, epoch):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
-            test_loss += F.nll_loss(output, target, reduction='sum').item()
-            pred = output.argmax(dim=1, keepdim=True)
+            test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
+            pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(test_loader.dataset)
-    accuracy = 100. * correct / len(test_loader.dataset)
+    test_losses.append(test_loss)
+
+    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)\n'.format(
+        test_loss, correct, len(test_loader.dataset),
+        100. * correct / len(test_loader.dataset)))
     
-    print(f'Epoch {epoch}: Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%')
-    return test_loss, accuracy
+    test_acc.append(100. * correct / len(test_loader.dataset))
+
 
 def main():
-    torch.manual_seed(RANDOM_SEED)
-    
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda" if use_cuda else "cpu")
+    print(device)
+    model = Net().to(device)
+    summary(model, input_size=(1, 28, 28))
+    BATCH_SIZE = 128
+
+    model =  Net().to(device)
+    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+    # scheduler = StepLR(optimizer, step_size=6, gamma=0.1)
+
     train_loader, test_loader = get_data_loaders(BATCH_SIZE)
-    
-    # Calculate dataset sizes
-    train_size = len(train_loader.dataset)
-    test_size = len(test_loader.dataset)
-    
-    model = Net().to(DEVICE)
-    total_params = count_parameters(model)
-    print(f"\nTotal Model Parameters: {total_params:,}")
-    print("\nDataset Split:")
-    print(f"Training samples: {train_size:,}")
-    print(f"Validation/Test samples: {test_size:,}")
-    print(f"Split ratio: {train_size}/{test_size}")
-    
-    optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE, momentum=MOMENTUM)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=2)
-    
-    best_accuracy = 0.0
-    train_losses = []
-    test_losses = []
-    accuracies = []
-    target_accuracy = 99.4
-    
-    for epoch in range(1, EPOCHS + 1):
-        train_loss = train(model, DEVICE, train_loader, optimizer, epoch)
-        test_loss, accuracy = test(model, DEVICE, test_loader, epoch)
-        
-        train_losses.append(train_loss)
-        test_losses.append(test_loss)
-        accuracies.append(accuracy)
-        
-        if accuracy > best_accuracy:
-            best_accuracy = accuracy
-            torch.save(model.state_dict(), 'best_model.pth')
-            
-        scheduler.step(accuracy)
-        
-        # Print if accuracy reaches target
-        if accuracy >= target_accuracy:
-            print(f"\nReached target accuracy of {target_accuracy}% at epoch {epoch}")
-    
-    print("\nTraining Complete!")
-    print("=" * 50)
-    print(f"Dataset Split Summary:")
-    print(f"Training Set: {train_size:,} samples")
-    print(f"Validation/Test Set: {test_size:,} samples")
-    print(f"Split Ratio: {train_size}/{test_size}")
-    print("-" * 50)
-    print(f"Total Model Parameters: {total_params:,}")
-    print(f"Best Validation/Test Accuracy: {best_accuracy:.2f}%")
-    print(f"Final Training Loss: {train_losses[-1]:.4f}")
-    print(f"Final Validation/Test Loss: {test_losses[-1]:.4f}")
-    print(f"Training stopped at epoch: {len(accuracies)}/{EPOCHS}")
-    print("=" * 50)
+
+    EPOCHS = 20
+    for epoch in range(EPOCHS):
+        print("EPOCH:", epoch)
+        train(model, device, train_loader, optimizer, epoch)
+        # scheduler.step()
+        test(model, device, test_loader)
+
+
+
 
 if __name__ == '__main__':
     main() 
