@@ -30,7 +30,7 @@ class Net(nn.Module):
             nn.ReLU(),
             nn.BatchNorm2d(16),
             nn.Dropout(dropout_value)
-        ) # output_size = 26
+        )
 
         # CONVOLUTION BLOCK 1
         self.convblock2 = nn.Sequential(
@@ -38,13 +38,13 @@ class Net(nn.Module):
             nn.ReLU(),
             nn.BatchNorm2d(32),
             nn.Dropout(dropout_value)
-        ) # output_size = 24
+        )
 
         # TRANSITION BLOCK 1
         self.convblock3 = nn.Sequential(
             nn.Conv2d(in_channels=32, out_channels=10, kernel_size=(1, 1), padding=0, bias=False),
-        ) # output_size = 24
-        self.pool1 = nn.MaxPool2d(2, 2) # output_size = 12
+        )
+        self.pool1 = nn.MaxPool2d(2, 2)
 
         # CONVOLUTION BLOCK 2
         self.convblock4 = nn.Sequential(
@@ -52,36 +52,33 @@ class Net(nn.Module):
             nn.ReLU(),            
             nn.BatchNorm2d(16),
             nn.Dropout(dropout_value)
-        ) # output_size = 10
+        )
         self.convblock5 = nn.Sequential(
             nn.Conv2d(in_channels=16, out_channels=16, kernel_size=(3, 3), padding=0, bias=False),
             nn.ReLU(),            
             nn.BatchNorm2d(16),
             nn.Dropout(dropout_value)
-        ) # output_size = 8
+        )
         self.convblock6 = nn.Sequential(
             nn.Conv2d(in_channels=16, out_channels=16, kernel_size=(3, 3), padding=0, bias=False),
             nn.ReLU(),            
             nn.BatchNorm2d(16),
             nn.Dropout(dropout_value)
-        ) # output_size = 6
+        )
         self.convblock7 = nn.Sequential(
             nn.Conv2d(in_channels=16, out_channels=16, kernel_size=(3, 3), padding=1, bias=False),
             nn.ReLU(),            
             nn.BatchNorm2d(16),
             nn.Dropout(dropout_value)
-        ) # output_size = 6
+        )
         
         # OUTPUT BLOCK
         self.gap = nn.Sequential(
             nn.AvgPool2d(kernel_size=6)
-        ) # output_size = 1
+        )
 
         self.convblock8 = nn.Sequential(
             nn.Conv2d(in_channels=16, out_channels=10, kernel_size=(1, 1), padding=0, bias=False),
-            # nn.BatchNorm2d(10),
-            # nn.ReLU(),
-            # nn.Dropout(dropout_value)
         ) 
 
 
@@ -283,7 +280,7 @@ class Net(nn.Module):
             nn.ReLU(),
             nn.BatchNorm2d(8),
             nn.Dropout(dropout_value)
-        ) # output_size = 26
+        )
 
         # CONVOLUTION BLOCK 1
         self.convblock2 = nn.Sequential(
@@ -291,13 +288,13 @@ class Net(nn.Module):
             nn.ReLU(),
             nn.BatchNorm2d(16),
             nn.Dropout(dropout_value)
-        ) # output_size = 24
+        )
 
         # TRANSITION BLOCK 1
         self.convblock3 = nn.Sequential(
             nn.Conv2d(in_channels=16, out_channels=8, kernel_size=(1, 1), padding=0, bias=False),
-        ) # output_size = 24
-        self.pool1 = nn.MaxPool2d(2, 2) # output_size = 12
+        )
+        self.pool1 = nn.MaxPool2d(2, 2)
 
         # CONVOLUTION BLOCK 2
         self.convblock4 = nn.Sequential(
@@ -305,26 +302,26 @@ class Net(nn.Module):
             nn.ReLU(),            
             nn.BatchNorm2d(12),
             nn.Dropout(dropout_value)
-        ) # output_size = 10
+        )
         
         self.convblock5 = nn.Sequential(
             nn.Conv2d(in_channels=12, out_channels=12, kernel_size=(3, 3), padding=0, bias=False),
             nn.ReLU(),            
             nn.BatchNorm2d(12),
             nn.Dropout(dropout_value)
-        ) # output_size = 8
+        )
 
         self.convblock6 = nn.Sequential(
             nn.Conv2d(in_channels=12, out_channels=12, kernel_size=(3, 3), padding=1, bias=False),
             nn.ReLU(),            
             nn.BatchNorm2d(12),
             nn.Dropout(dropout_value)
-        ) # output_size = 8
+        )
         
         # OUTPUT BLOCK
         self.gap = nn.Sequential(
             nn.AvgPool2d(kernel_size=8)
-        ) # output_size = 1
+        )
 
         self.convblock7 = nn.Sequential(
             nn.Conv2d(in_channels=12, out_channels=10, kernel_size=(1, 1), padding=0, bias=False),
@@ -475,3 +472,257 @@ PS E:\AI\github\era-v3-s7-cnn-cloud>
 ```
 
 
+# Model 3
+### Targets: 
+ - The number of parameters less than 8K, but the accuracy is not should be higher than 99.41% in 15 epochs. The next goal is to achieve the target of 99.41% accuracy in less than 15 epochs.
+ - Key changes made to improve performance while keeping parameters under 8K:
+  - Increased initial channels from 8 to 10
+  - This provides better feature extraction capability in the early layers
+  - Early layers are crucial for capturing basic features
+  -  Modified channel progression:
+  -  Input → 10 → 16 → 10 → 14 → 14 → 16 → 10
+  -  More balanced channel distribution
+  -  Slightly wider in middle layers for better feature representation
+  -  Increased channels in convblock4 and convblock5 from 12 to 14
+  -  These layers are crucial for higher-level feature extraction
+  -  More channels here help in better pattern recognition
+  -  Final convblock6 now has 16 channels instead of 12
+  -  Provides more features before the GAP layer
+  -  Helps in better class separation
+  
+  -  Justification for changes:
+  -  The increased channel count in early and middle layers helps in:
+  -  Better feature extraction
+  -  More robust pattern recognition
+  -  Improved information flow through the network
+  -  Kept the architectural elements that work well:
+  -  Dropout for regularization
+  -  Batch normalization for training stability
+  -  GAP layer for spatial dimension reduction
+  -  1x1 convolutions for channel reduction
+  -  The channel progression is now more gradual and balanced:
+  -  Helps in better feature hierarchy
+  -  Maintains good information flow
+  -  Still keeps parameters under 8K
+  -  These changes should help achieve the target 99.4% accuracy while:
+  -  Keeping parameters under 8K
+  -  Maintaining fast convergence (under 15 epochs)
+  -  Improving the model's feature extraction capability
+### Results: 
+- Parameters: 7.0k
+- Best Train Accuracy: 98.64
+- Best Test Accuracy: 99.22 (14th Epoch)
+### Analysis: 
+ - The model is able to achieve 98.64% accuracy on the test set with 7.0k parameters.
+ - The model is able to achieve 99.22% accuracy on the train set with 7.0k parameters.
+
+
+## Code for Model 3
+
+```python
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torchvision import transforms
+
+dropout_value = 0.1
+
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        # Input Block
+        self.convblock1 = nn.Sequential(
+            nn.Conv2d(in_channels=1, out_channels=10, kernel_size=(3, 3), padding=0, bias=False),
+            nn.ReLU(),
+            nn.BatchNorm2d(10),
+            nn.Dropout(dropout_value)
+        )
+
+        # CONVOLUTION BLOCK 1
+        self.convblock2 = nn.Sequential(
+            nn.Conv2d(in_channels=10, out_channels=16, kernel_size=(3, 3), padding=0, bias=False),
+            nn.ReLU(),
+            nn.BatchNorm2d(16),
+            nn.Dropout(dropout_value)
+        )
+
+        # TRANSITION BLOCK 1
+        self.convblock3 = nn.Sequential(
+            nn.Conv2d(in_channels=16, out_channels=10, kernel_size=(1, 1), padding=0, bias=False),
+        )
+        self.pool1 = nn.MaxPool2d(2, 2)
+
+        # CONVOLUTION BLOCK 2
+        self.convblock4 = nn.Sequential(
+            nn.Conv2d(in_channels=10, out_channels=14, kernel_size=(3, 3), padding=0, bias=False),
+            nn.ReLU(),            
+            nn.BatchNorm2d(14),
+            nn.Dropout(dropout_value)
+        )
+        
+        self.convblock5 = nn.Sequential(
+            nn.Conv2d(in_channels=14, out_channels=14, kernel_size=(3, 3), padding=0, bias=False),
+            nn.ReLU(),            
+            nn.BatchNorm2d(14),
+            nn.Dropout(dropout_value)
+        )
+
+        self.convblock6 = nn.Sequential(
+            nn.Conv2d(in_channels=14, out_channels=16, kernel_size=(3, 3), padding=1, bias=False),
+            nn.ReLU(),            
+            nn.BatchNorm2d(16),
+            nn.Dropout(dropout_value)
+        )
+        
+        # OUTPUT BLOCK
+        self.gap = nn.Sequential(
+            nn.AvgPool2d(kernel_size=8)
+        )
+
+        self.convblock7 = nn.Sequential(
+            nn.Conv2d(in_channels=16, out_channels=10, kernel_size=(1, 1), padding=0, bias=False),
+        ) 
+
+    def forward(self, x):
+        x = self.convblock1(x)
+        x = self.convblock2(x)
+        x = self.convblock3(x)
+        x = self.pool1(x)
+        x = self.convblock4(x)
+        x = self.convblock5(x)
+        x = self.convblock6(x)
+        x = self.gap(x)        
+        x = self.convblock7(x)
+
+        x = x.view(-1, 10)
+        return F.log_softmax(x, dim=-1)
+
+```
+
+## Console Log for Model 3
+
+```
+PS E:\AI\github\era-v3-s7-cnn-cloud> python src/train.py     
+cpu
+----------------------------------------------------------------
+        Layer (type)               Output Shape         Param # 
+================================================================
+            Conv2d-1           [-1, 10, 26, 26]              90 
+              ReLU-2           [-1, 10, 26, 26]               0 
+       BatchNorm2d-3           [-1, 10, 26, 26]              20 
+           Dropout-4           [-1, 10, 26, 26]               0 
+            Conv2d-5           [-1, 16, 24, 24]           1,440 
+              ReLU-6           [-1, 16, 24, 24]               0 
+       BatchNorm2d-7           [-1, 16, 24, 24]              32 
+           Dropout-8           [-1, 16, 24, 24]               0 
+            Conv2d-9           [-1, 10, 24, 24]             160
+        MaxPool2d-10           [-1, 10, 12, 12]               0
+           Conv2d-11           [-1, 14, 10, 10]           1,260
+             ReLU-12           [-1, 14, 10, 10]               0
+      BatchNorm2d-13           [-1, 14, 10, 10]              28
+          Dropout-14           [-1, 14, 10, 10]               0
+           Conv2d-15             [-1, 14, 8, 8]           1,764
+             ReLU-16             [-1, 14, 8, 8]               0
+      BatchNorm2d-17             [-1, 14, 8, 8]              28
+          Dropout-18             [-1, 14, 8, 8]               0
+           Conv2d-19             [-1, 16, 8, 8]           2,016
+             ReLU-20             [-1, 16, 8, 8]               0
+      BatchNorm2d-21             [-1, 16, 8, 8]              32
+          Dropout-22             [-1, 16, 8, 8]               0
+        AvgPool2d-23             [-1, 16, 1, 1]               0
+           Conv2d-24             [-1, 10, 1, 1]             160
+================================================================
+Total params: 7,030
+Trainable params: 7,030
+Non-trainable params: 0
+----------------------------------------------------------------
+Input size (MB): 0.00
+Forward/backward pass size (MB): 0.64
+Params size (MB): 0.03
+Estimated Total Size (MB): 0.67
+----------------------------------------------------------------
+CUDA Available? False
+EPOCH: 0
+Loss=0.05787000060081482 Batch_id=937 Accuracy=88.26: 100%|██████████| 938/938 [01:32<00:00, 10.11it/s] 
+
+Test set: Average loss: 0.0954, Accuracy: 9730/10000 (97.30%)
+
+EPOCH: 1
+Loss=0.036990053951740265 Batch_id=937 Accuracy=96.86: 100%|█████████| 938/938 [01:45<00:00,  8.89it/s] 
+
+Test set: Average loss: 0.0975, Accuracy: 9687/10000 (96.87%)
+
+EPOCH: 2
+Loss=0.08263929188251495 Batch_id=937 Accuracy=97.36: 100%|██████████| 938/938 [01:30<00:00, 10.36it/s] 
+
+Test set: Average loss: 0.0461, Accuracy: 9863/10000 (98.63%)
+
+EPOCH: 3
+Loss=0.3791441321372986 Batch_id=937 Accuracy=97.70: 100%|███████████| 938/938 [01:30<00:00, 10.32it/s] 
+
+Test set: Average loss: 0.0485, Accuracy: 9847/10000 (98.47%)
+
+EPOCH: 4
+Loss=0.04553261399269104 Batch_id=937 Accuracy=97.92: 100%|██████████| 938/938 [01:31<00:00, 10.31it/s] 
+
+Test set: Average loss: 0.0328, Accuracy: 9899/10000 (98.99%)
+
+EPOCH: 5
+Loss=0.041056953370571136 Batch_id=937 Accuracy=98.06: 100%|█████████| 938/938 [01:32<00:00, 10.14it/s] 
+
+Test set: Average loss: 0.0348, Accuracy: 9896/10000 (98.96%)
+
+EPOCH: 6
+Loss=0.12304671853780746 Batch_id=937 Accuracy=98.19: 100%|██████████| 938/938 [01:30<00:00, 10.35it/s] 
+
+Test set: Average loss: 0.0327, Accuracy: 9898/10000 (98.98%)
+
+EPOCH: 7
+Loss=0.24297891557216644 Batch_id=937 Accuracy=98.29: 100%|██████████| 938/938 [01:31<00:00, 10.21it/s] 
+
+Test set: Average loss: 0.0368, Accuracy: 9886/10000 (98.86%)
+
+EPOCH: 8
+Loss=0.08812259137630463 Batch_id=937 Accuracy=98.40: 100%|██████████| 938/938 [01:30<00:00, 10.37it/s] 
+
+Test set: Average loss: 0.0301, Accuracy: 9901/10000 (99.01%)
+
+EPOCH: 9
+Loss=0.005168434232473373 Batch_id=937 Accuracy=98.48: 100%|█████████| 938/938 [01:30<00:00, 10.31it/s] 
+
+Test set: Average loss: 0.0325, Accuracy: 9887/10000 (98.87%)
+
+EPOCH: 10
+Loss=0.2643653452396393 Batch_id=937 Accuracy=98.52: 100%|███████████| 938/938 [01:32<00:00, 10.13it/s] 
+
+Test set: Average loss: 0.0293, Accuracy: 9903/10000 (99.03%)
+
+EPOCH: 11
+Loss=0.083694688975811 Batch_id=937 Accuracy=98.58: 100%|████████████| 938/938 [01:30<00:00, 10.33it/s] 
+
+Test set: Average loss: 0.0265, Accuracy: 9908/10000 (99.08%)
+
+EPOCH: 12
+Loss=0.0372406467795372 Batch_id=937 Accuracy=98.56: 100%|███████████| 938/938 [01:30<00:00, 10.35it/s] 
+
+Test set: Average loss: 0.0260, Accuracy: 9919/10000 (99.19%)
+
+EPOCH: 13
+Loss=0.19014757871627808 Batch_id=937 Accuracy=98.64: 100%|██████████| 938/938 [01:31<00:00, 10.28it/s]
+
+Test set: Average loss: 0.0237, Accuracy: 9922/10000 (99.22%)
+
+EPOCH: 14
+Loss=0.2032955437898636 Batch_id=937 Accuracy=98.61: 100%|███████████| 938/938 [01:31<00:00, 10.24it/s]
+
+Test set: Average loss: 0.0261, Accuracy: 9916/10000 (99.16%)
+
+
+===================
+Results:
+Parameters: 7.0k
+Best Train Accuracy: 98.64
+Best Test Accuracy: 99.22 (14th Epoch)
+===================
+PS E:\AI\github\era-v3-s7-cnn-cloud>
+```
