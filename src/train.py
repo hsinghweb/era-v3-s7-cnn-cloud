@@ -3,7 +3,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 from tqdm import tqdm
 from model import Net
-from config import *
 from utils import get_data_loaders
 from torchsummary import summary
 
@@ -89,7 +88,7 @@ def main():
     best_test_acc = 0
     best_test_epoch = 0
     
-    EPOCHS = 20
+    EPOCHS = 15
     for epoch in range(EPOCHS):
         print("EPOCH:", epoch)
         train_acc = train(model, device, train_loader, optimizer, epoch)
