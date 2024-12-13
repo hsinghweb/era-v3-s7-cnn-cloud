@@ -10,55 +10,55 @@ class Net(nn.Module):
         super(Net, self).__init__()
         # Input Block
         self.convblock1 = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=8, kernel_size=(3, 3), padding=0, bias=False),
+            nn.Conv2d(in_channels=1, out_channels=10, kernel_size=(3, 3), padding=0, bias=False),
             nn.ReLU(),
-            nn.BatchNorm2d(8),
+            nn.BatchNorm2d(10),
             nn.Dropout(dropout_value)
-        ) # output_size = 26
+        )
 
         # CONVOLUTION BLOCK 1
         self.convblock2 = nn.Sequential(
-            nn.Conv2d(in_channels=8, out_channels=16, kernel_size=(3, 3), padding=0, bias=False),
+            nn.Conv2d(in_channels=10, out_channels=16, kernel_size=(3, 3), padding=0, bias=False),
             nn.ReLU(),
             nn.BatchNorm2d(16),
             nn.Dropout(dropout_value)
-        ) # output_size = 24
+        )
 
         # TRANSITION BLOCK 1
         self.convblock3 = nn.Sequential(
-            nn.Conv2d(in_channels=16, out_channels=8, kernel_size=(1, 1), padding=0, bias=False),
-        ) # output_size = 24
-        self.pool1 = nn.MaxPool2d(2, 2) # output_size = 12
+            nn.Conv2d(in_channels=16, out_channels=10, kernel_size=(1, 1), padding=0, bias=False),
+        )
+        self.pool1 = nn.MaxPool2d(2, 2)
 
         # CONVOLUTION BLOCK 2
         self.convblock4 = nn.Sequential(
-            nn.Conv2d(in_channels=8, out_channels=12, kernel_size=(3, 3), padding=0, bias=False),
+            nn.Conv2d(in_channels=10, out_channels=14, kernel_size=(3, 3), padding=0, bias=False),
             nn.ReLU(),            
-            nn.BatchNorm2d(12),
+            nn.BatchNorm2d(14),
             nn.Dropout(dropout_value)
-        ) # output_size = 10
+        )
         
         self.convblock5 = nn.Sequential(
-            nn.Conv2d(in_channels=12, out_channels=12, kernel_size=(3, 3), padding=0, bias=False),
+            nn.Conv2d(in_channels=14, out_channels=14, kernel_size=(3, 3), padding=0, bias=False),
             nn.ReLU(),            
-            nn.BatchNorm2d(12),
+            nn.BatchNorm2d(14),
             nn.Dropout(dropout_value)
-        ) # output_size = 8
+        )
 
         self.convblock6 = nn.Sequential(
-            nn.Conv2d(in_channels=12, out_channels=12, kernel_size=(3, 3), padding=1, bias=False),
+            nn.Conv2d(in_channels=14, out_channels=16, kernel_size=(3, 3), padding=1, bias=False),
             nn.ReLU(),            
-            nn.BatchNorm2d(12),
+            nn.BatchNorm2d(16),
             nn.Dropout(dropout_value)
-        ) # output_size = 8
+        )
         
         # OUTPUT BLOCK
         self.gap = nn.Sequential(
             nn.AvgPool2d(kernel_size=8)
-        ) # output_size = 1
+        )
 
         self.convblock7 = nn.Sequential(
-            nn.Conv2d(in_channels=12, out_channels=10, kernel_size=(1, 1), padding=0, bias=False),
+            nn.Conv2d(in_channels=16, out_channels=10, kernel_size=(1, 1), padding=0, bias=False),
         ) 
 
     def forward(self, x):
