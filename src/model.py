@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
 
-dropout_value = 0.05
+dropout_value = 0.03
 
 class Net(nn.Module):
     def __init__(self):

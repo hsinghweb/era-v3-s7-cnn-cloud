@@ -509,12 +509,12 @@ PS E:\AI\github\era-v3-s7-cnn-cloud>
   -  Maintaining fast convergence (under 15 epochs)
   -  Improving the model's feature extraction capability
 ### Results: 
-- Parameters: 7.0k
-- Best Train Accuracy: 98.64
-- Best Test Accuracy: 99.22 (14th Epoch)
+- Parameters: 7.9k
+- Best Train Accuracy: 98.68
+- Best Test Accuracy: 99.44 (12th Epoch)
 ### Analysis: 
- - The model is able to achieve 98.64% accuracy on the test set with 7.0k parameters.
- - The model is able to achieve 99.22% accuracy on the train set with 7.0k parameters.
+- The model is able to achieve 99.44% accuracy on the test set with 7.9k parameters.
+- The model is able to achieve 98.68% accuracy on the train set with 7.9k parameters.
 
 
 ## Code for Model 3
@@ -525,7 +525,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
 
-dropout_value = 0.1
+dropout_value = 0.03
 
 class Net(nn.Module):
     def __init__(self):
@@ -533,196 +533,237 @@ class Net(nn.Module):
         # Input Block
         self.convblock1 = nn.Sequential(
             nn.Conv2d(in_channels=1, out_channels=10, kernel_size=(3, 3), padding=0, bias=False),
-            nn.ReLU(),
+            nn.GELU(),
             nn.BatchNorm2d(10),
             nn.Dropout(dropout_value)
         )
 
         # CONVOLUTION BLOCK 1
         self.convblock2 = nn.Sequential(
-            nn.Conv2d(in_channels=10, out_channels=16, kernel_size=(3, 3), padding=0, bias=False),
-            nn.ReLU(),
-            nn.BatchNorm2d(16),
+            nn.Conv2d(in_channels=10, out_channels=14, kernel_size=(3, 3), padding=0, bias=False),
+            nn.GELU(),
+            nn.BatchNorm2d(14),
             nn.Dropout(dropout_value)
         )
 
         # TRANSITION BLOCK 1
         self.convblock3 = nn.Sequential(
-            nn.Conv2d(in_channels=16, out_channels=10, kernel_size=(1, 1), padding=0, bias=False),
+            nn.Conv2d(in_channels=14, out_channels=10, kernel_size=(1, 1), padding=0, bias=False),
         )
         self.pool1 = nn.MaxPool2d(2, 2)
 
         # CONVOLUTION BLOCK 2
         self.convblock4 = nn.Sequential(
             nn.Conv2d(in_channels=10, out_channels=14, kernel_size=(3, 3), padding=0, bias=False),
-            nn.ReLU(),            
+            nn.GELU(),            
             nn.BatchNorm2d(14),
             nn.Dropout(dropout_value)
         )
         
         self.convblock5 = nn.Sequential(
             nn.Conv2d(in_channels=14, out_channels=14, kernel_size=(3, 3), padding=0, bias=False),
-            nn.ReLU(),            
+            nn.GELU(),            
             nn.BatchNorm2d(14),
             nn.Dropout(dropout_value)
         )
 
+        # NEW CONVOLUTION BLOCK
         self.convblock6 = nn.Sequential(
-            nn.Conv2d(in_channels=14, out_channels=16, kernel_size=(3, 3), padding=1, bias=False),
-            nn.ReLU(),            
-            nn.BatchNorm2d(16),
+            nn.Conv2d(in_channels=14, out_channels=12, kernel_size=(3, 3), padding=0, bias=False),
+            nn.GELU(),            
+            nn.BatchNorm2d(12),
+            nn.Dropout(dropout_value)
+        )
+
+        self.convblock7 = nn.Sequential(
+            nn.Conv2d(in_channels=12, out_channels=12, kernel_size=(3, 3), padding=1, bias=False),
+            nn.GELU(),            
+            nn.BatchNorm2d(12),
             nn.Dropout(dropout_value)
         )
         
         # OUTPUT BLOCK
         self.gap = nn.Sequential(
-            nn.AvgPool2d(kernel_size=8)
+            nn.AvgPool2d(kernel_size=6)
         )
 
-        self.convblock7 = nn.Sequential(
-            nn.Conv2d(in_channels=16, out_channels=10, kernel_size=(1, 1), padding=0, bias=False),
+        self.convblock8 = nn.Sequential(
+            nn.Conv2d(in_channels=12, out_channels=10, kernel_size=(1, 1), padding=0, bias=False),
         ) 
 
+        self.skip1 = nn.Conv2d(in_channels=10, out_channels=14, kernel_size=(1, 1), padding=0, bias=False)
+        self.skip2 = nn.Conv2d(in_channels=14, out_channels=12, kernel_size=(1, 1), padding=0, bias=False)
+
     def forward(self, x):
-        x = self.convblock1(x)
-        x = self.convblock2(x)
-        x = self.convblock3(x)
-        x = self.pool1(x)
-        x = self.convblock4(x)
-        x = self.convblock5(x)
-        x = self.convblock6(x)
-        x = self.gap(x)        
-        x = self.convblock7(x)
+        x1 = self.convblock1(x)
+        x2 = self.convblock2(x1)
+        x3 = self.convblock3(x2)
+        x = self.pool1(x3)
+        
+        x4 = self.convblock4(x)
+        x4 = x4 + self.skip1(F.interpolate(x, size=(x4.shape[2], x4.shape[3])))
+        
+        x5 = self.convblock5(x4)
+        x6 = self.convblock6(x5)
+        x6 = x6 + self.skip2(F.interpolate(x4, size=x6.shape[2:]))
+        
+        x7 = self.convblock7(x6)
+        
+        b, c, h, w = x7.shape
+        att = F.adaptive_avg_pool2d(x7, 1)
+        att = torch.sigmoid(att)
+        x7 = x7 * att
+        
+        x = self.gap(x7)        
+        x = self.convblock8(x)
 
         x = x.view(-1, 10)
         return F.log_softmax(x, dim=-1)
+
 
 ```
 
 ## Console Log for Model 3
 
 ```
-PS E:\AI\github\era-v3-s7-cnn-cloud> python src/train.py     
+PS E:\AI\github\era-v3-s7-cnn-cloud> python src/train.py
 cpu
 ----------------------------------------------------------------
-        Layer (type)               Output Shape         Param # 
+        Layer (type)               Output Shape         Param #
 ================================================================
-            Conv2d-1           [-1, 10, 26, 26]              90 
-              ReLU-2           [-1, 10, 26, 26]               0 
-       BatchNorm2d-3           [-1, 10, 26, 26]              20 
-           Dropout-4           [-1, 10, 26, 26]               0 
-            Conv2d-5           [-1, 16, 24, 24]           1,440 
-              ReLU-6           [-1, 16, 24, 24]               0 
-       BatchNorm2d-7           [-1, 16, 24, 24]              32 
-           Dropout-8           [-1, 16, 24, 24]               0 
-            Conv2d-9           [-1, 10, 24, 24]             160
+            Conv2d-1           [-1, 10, 26, 26]              90
+              GELU-2           [-1, 10, 26, 26]               0
+       BatchNorm2d-3           [-1, 10, 26, 26]              20
+           Dropout-4           [-1, 10, 26, 26]               0
+            Conv2d-5           [-1, 14, 24, 24]           1,260
+              GELU-6           [-1, 14, 24, 24]               0
+       BatchNorm2d-7           [-1, 14, 24, 24]              28
+           Dropout-8           [-1, 14, 24, 24]               0
+            Conv2d-9           [-1, 10, 24, 24]             140
         MaxPool2d-10           [-1, 10, 12, 12]               0
            Conv2d-11           [-1, 14, 10, 10]           1,260
-             ReLU-12           [-1, 14, 10, 10]               0
+             GELU-12           [-1, 14, 10, 10]               0
       BatchNorm2d-13           [-1, 14, 10, 10]              28
           Dropout-14           [-1, 14, 10, 10]               0
-           Conv2d-15             [-1, 14, 8, 8]           1,764
-             ReLU-16             [-1, 14, 8, 8]               0
-      BatchNorm2d-17             [-1, 14, 8, 8]              28
-          Dropout-18             [-1, 14, 8, 8]               0
-           Conv2d-19             [-1, 16, 8, 8]           2,016
-             ReLU-20             [-1, 16, 8, 8]               0
-      BatchNorm2d-21             [-1, 16, 8, 8]              32
-          Dropout-22             [-1, 16, 8, 8]               0
-        AvgPool2d-23             [-1, 16, 1, 1]               0
-           Conv2d-24             [-1, 10, 1, 1]             160
+           Conv2d-15           [-1, 14, 10, 10]             140
+           Conv2d-16             [-1, 14, 8, 8]           1,764
+             GELU-17             [-1, 14, 8, 8]               0
+      BatchNorm2d-18             [-1, 14, 8, 8]              28
+          Dropout-19             [-1, 14, 8, 8]               0
+           Conv2d-20             [-1, 12, 6, 6]           1,512
+             GELU-21             [-1, 12, 6, 6]               0
+      BatchNorm2d-22             [-1, 12, 6, 6]              24
+          Dropout-23             [-1, 12, 6, 6]               0
+           Conv2d-24             [-1, 12, 6, 6]             168
+           Conv2d-25             [-1, 12, 6, 6]           1,296
+             GELU-26             [-1, 12, 6, 6]               0
+      BatchNorm2d-27             [-1, 12, 6, 6]              24
+          Dropout-28             [-1, 12, 6, 6]               0
+        AvgPool2d-29             [-1, 12, 1, 1]               0
+           Conv2d-30             [-1, 10, 1, 1]             120
 ================================================================
-Total params: 7,030
-Trainable params: 7,030
+Total params: 7,902
+Trainable params: 7,902
 Non-trainable params: 0
 ----------------------------------------------------------------
+        AvgPool2d-29             [-1, 12, 1, 1]               0
+           Conv2d-30             [-1, 10, 1, 1]             120
+================================================================
+Total params: 7,902
+Trainable params: 7,902
+Non-trainable params: 0
+----------------------------------------------------------------
+Trainable params: 7,902
+Non-trainable params: 0
+----------------------------------------------------------------
+----------------------------------------------------------------
 Input size (MB): 0.00
-Forward/backward pass size (MB): 0.64
+Forward/backward pass size (MB): 0.62
 Params size (MB): 0.03
-Estimated Total Size (MB): 0.67
+Estimated Total Size (MB): 0.65
 ----------------------------------------------------------------
 CUDA Available? False
 EPOCH: 0
-Loss=0.05787000060081482 Batch_id=937 Accuracy=88.26: 100%|██████████| 938/938 [01:32<00:00, 10.11it/s] 
+Loss=0.06323619931936264 Batch_id=937 Accuracy=82.70: 100%|███████████████████████| 938/938 [02:03<00:00,  7.60it/s] 
 
-Test set: Average loss: 0.0954, Accuracy: 9730/10000 (97.30%)
+Test set: Average loss: 0.0663, Accuracy: 9796/10000 (97.96%)
 
 EPOCH: 1
-Loss=0.036990053951740265 Batch_id=937 Accuracy=96.86: 100%|█████████| 938/938 [01:45<00:00,  8.89it/s] 
+Loss=0.2595078647136688 Batch_id=937 Accuracy=96.57: 100%|████████████████████████| 938/938 [01:53<00:00,  8.27it/s] 
 
-Test set: Average loss: 0.0975, Accuracy: 9687/10000 (96.87%)
+Test set: Average loss: 0.0489, Accuracy: 9843/10000 (98.43%)
 
 EPOCH: 2
-Loss=0.08263929188251495 Batch_id=937 Accuracy=97.36: 100%|██████████| 938/938 [01:30<00:00, 10.36it/s] 
+Loss=0.06437662243843079 Batch_id=937 Accuracy=97.30: 100%|███████████████████████| 938/938 [02:54<00:00,  5.37it/s] 
 
-Test set: Average loss: 0.0461, Accuracy: 9863/10000 (98.63%)
+Test set: Average loss: 0.0387, Accuracy: 9881/10000 (98.81%)
 
 EPOCH: 3
-Loss=0.3791441321372986 Batch_id=937 Accuracy=97.70: 100%|███████████| 938/938 [01:30<00:00, 10.32it/s] 
+Loss=0.24132344126701355 Batch_id=937 Accuracy=97.75: 100%|███████████████████████| 938/938 [02:18<00:00,  6.79it/s] 
 
-Test set: Average loss: 0.0485, Accuracy: 9847/10000 (98.47%)
+Test set: Average loss: 0.0305, Accuracy: 9905/10000 (99.05%)
 
 EPOCH: 4
-Loss=0.04553261399269104 Batch_id=937 Accuracy=97.92: 100%|██████████| 938/938 [01:31<00:00, 10.31it/s] 
+Loss=0.05336469039320946 Batch_id=937 Accuracy=97.99: 100%|███████████████████████| 938/938 [02:19<00:00,  6.72it/s] 
 
-Test set: Average loss: 0.0328, Accuracy: 9899/10000 (98.99%)
+Test set: Average loss: 0.0296, Accuracy: 9911/10000 (99.11%)
 
 EPOCH: 5
-Loss=0.041056953370571136 Batch_id=937 Accuracy=98.06: 100%|█████████| 938/938 [01:32<00:00, 10.14it/s] 
+Loss=0.045321397483348846 Batch_id=937 Accuracy=98.16: 100%|██████████████████████| 938/938 [02:02<00:00,  7.64it/s] 
 
-Test set: Average loss: 0.0348, Accuracy: 9896/10000 (98.96%)
+Test set: Average loss: 0.0333, Accuracy: 9899/10000 (98.99%)
 
 EPOCH: 6
-Loss=0.12304671853780746 Batch_id=937 Accuracy=98.19: 100%|██████████| 938/938 [01:30<00:00, 10.35it/s] 
+Loss=0.004230411723256111 Batch_id=937 Accuracy=98.27: 100%|██████████████████████| 938/938 [02:05<00:00,  7.47it/s] 
 
-Test set: Average loss: 0.0327, Accuracy: 9898/10000 (98.98%)
+Test set: Average loss: 0.0246, Accuracy: 9928/10000 (99.28%)
 
 EPOCH: 7
-Loss=0.24297891557216644 Batch_id=937 Accuracy=98.29: 100%|██████████| 938/938 [01:31<00:00, 10.21it/s] 
+Loss=0.006700605619698763 Batch_id=937 Accuracy=98.36: 100%|██████████████████████| 938/938 [02:04<00:00,  7.55it/s] 
 
-Test set: Average loss: 0.0368, Accuracy: 9886/10000 (98.86%)
+Test set: Average loss: 0.0274, Accuracy: 9914/10000 (99.14%)
 
 EPOCH: 8
-Loss=0.08812259137630463 Batch_id=937 Accuracy=98.40: 100%|██████████| 938/938 [01:30<00:00, 10.37it/s] 
+Loss=0.051461756229400635 Batch_id=937 Accuracy=98.35: 100%|██████████████████████| 938/938 [01:57<00:00,  8.02it/s] 
 
-Test set: Average loss: 0.0301, Accuracy: 9901/10000 (99.01%)
+Test set: Average loss: 0.0267, Accuracy: 9915/10000 (99.15%)
 
 EPOCH: 9
-Loss=0.005168434232473373 Batch_id=937 Accuracy=98.48: 100%|█████████| 938/938 [01:30<00:00, 10.31it/s] 
+Loss=0.00195669406093657 Batch_id=937 Accuracy=98.40: 100%|███████████████████████| 938/938 [01:58<00:00,  7.92it/s] 
 
-Test set: Average loss: 0.0325, Accuracy: 9887/10000 (98.87%)
+Test set: Average loss: 0.0251, Accuracy: 9918/10000 (99.18%)
 
 EPOCH: 10
-Loss=0.2643653452396393 Batch_id=937 Accuracy=98.52: 100%|███████████| 938/938 [01:32<00:00, 10.13it/s] 
+Loss=0.13488353788852692 Batch_id=937 Accuracy=98.53: 100%|███████████████████████| 938/938 [01:58<00:00,  7.93it/s] 
 
-Test set: Average loss: 0.0293, Accuracy: 9903/10000 (99.03%)
+Test set: Average loss: 0.0231, Accuracy: 9921/10000 (99.21%)
 
 EPOCH: 11
-Loss=0.083694688975811 Batch_id=937 Accuracy=98.58: 100%|████████████| 938/938 [01:30<00:00, 10.33it/s] 
+Loss=0.010298049077391624 Batch_id=937 Accuracy=98.61: 100%|██████████████████████| 938/938 [01:58<00:00,  7.91it/s] 
 
-Test set: Average loss: 0.0265, Accuracy: 9908/10000 (99.08%)
+Test set: Average loss: 0.0182, Accuracy: 9944/10000 (99.44%)
 
 EPOCH: 12
-Loss=0.0372406467795372 Batch_id=937 Accuracy=98.56: 100%|███████████| 938/938 [01:30<00:00, 10.35it/s] 
+Loss=0.19654542207717896 Batch_id=937 Accuracy=98.57: 100%|███████████████████████| 938/938 [01:50<00:00,  8.51it/s] 
 
-Test set: Average loss: 0.0260, Accuracy: 9919/10000 (99.19%)
+Test set: Average loss: 0.0212, Accuracy: 9926/10000 (99.26%)
 
 EPOCH: 13
-Loss=0.19014757871627808 Batch_id=937 Accuracy=98.64: 100%|██████████| 938/938 [01:31<00:00, 10.28it/s]
+Loss=0.04861040413379669 Batch_id=937 Accuracy=98.63: 100%|███████████████████████| 938/938 [01:48<00:00,  8.61it/s]
 
-Test set: Average loss: 0.0237, Accuracy: 9922/10000 (99.22%)
+Test set: Average loss: 0.0186, Accuracy: 9939/10000 (99.39%)
 
 EPOCH: 14
-Loss=0.2032955437898636 Batch_id=937 Accuracy=98.61: 100%|███████████| 938/938 [01:31<00:00, 10.24it/s]
+Loss=0.28460389375686646 Batch_id=937 Accuracy=98.68: 100%|███████████████████████| 938/938 [01:49<00:00,  8.60it/s]
 
-Test set: Average loss: 0.0261, Accuracy: 9916/10000 (99.16%)
+Test set: Average loss: 0.0231, Accuracy: 9923/10000 (99.23%)
 
 
 ===================
 Results:
-Parameters: 7.0k
-Best Train Accuracy: 98.64
-Best Test Accuracy: 99.22 (14th Epoch)
+Parameters: 7.9k
+Best Train Accuracy: 98.68
+Best Test Accuracy: 99.44 (12th Epoch)
 ===================
 PS E:\AI\github\era-v3-s7-cnn-cloud>
 ```
