@@ -1,24 +1,23 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision import transforms
 
 dropout_value = 0.05
 
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        # Input Block - reducing initial channels to control params
+        # Input Block
         self.convblock1 = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=8, kernel_size=(3, 3), padding=0, bias=False),
+            nn.Conv2d(in_channels=1, out_channels=10, kernel_size=(3, 3), padding=0, bias=False),
             nn.ReLU(),
-            nn.BatchNorm2d(8),
+            nn.BatchNorm2d(10),
             nn.Dropout(dropout_value)
         )
 
         # CONVOLUTION BLOCK 1
         self.convblock2 = nn.Sequential(
-            nn.Conv2d(in_channels=8, out_channels=16, kernel_size=(3, 3), padding=0, bias=False),
+            nn.Conv2d(in_channels=10, out_channels=16, kernel_size=(3, 3), padding=0, bias=False),
             nn.ReLU(),
             nn.BatchNorm2d(16),
             nn.Dropout(dropout_value)
@@ -27,12 +26,12 @@ class Net(nn.Module):
         # TRANSITION BLOCK 1
         self.pool1 = nn.MaxPool2d(2, 2)
         self.convblock3 = nn.Sequential(
-            nn.Conv2d(in_channels=16, out_channels=8, kernel_size=(1, 1), padding=0, bias=False),
+            nn.Conv2d(in_channels=16, out_channels=12, kernel_size=(1, 1), padding=0, bias=False),
         )
 
         # CONVOLUTION BLOCK 2
         self.convblock4 = nn.Sequential(
-            nn.Conv2d(in_channels=8, out_channels=16, kernel_size=(3, 3), padding=0, bias=False),
+            nn.Conv2d(in_channels=12, out_channels=16, kernel_size=(3, 3), padding=0, bias=False),
             nn.ReLU(),            
             nn.BatchNorm2d(16),
             nn.Dropout(dropout_value)
@@ -48,12 +47,12 @@ class Net(nn.Module):
         # TRANSITION BLOCK 2
         self.pool2 = nn.MaxPool2d(2, 2)
         self.convblock6 = nn.Sequential(
-            nn.Conv2d(in_channels=16, out_channels=8, kernel_size=(1, 1), padding=0, bias=False),
+            nn.Conv2d(in_channels=16, out_channels=12, kernel_size=(1, 1), padding=0, bias=False),
         )
 
         # OUTPUT BLOCK
         self.convblock7 = nn.Sequential(
-            nn.Conv2d(in_channels=8, out_channels=16, kernel_size=(3, 3), padding=1, bias=False),
+            nn.Conv2d(in_channels=12, out_channels=16, kernel_size=(3, 3), padding=1, bias=False),
             nn.ReLU(),            
             nn.BatchNorm2d(16),
             nn.Dropout(dropout_value)
