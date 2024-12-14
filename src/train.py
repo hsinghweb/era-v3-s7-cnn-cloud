@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 from tqdm import tqdm
-from model import Net
+from model import Model3
 from utils import get_data_loaders
 from torchsummary import summary
 
@@ -75,11 +75,11 @@ def main():
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
     print(device)
-    model = Net().to(device)
+    model = Model3().to(device)
     summary(model, input_size=(1, 28, 28))
     BATCH_SIZE = 128
 
-    model = Net().to(device)
+    model = Model3().to(device)
     optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
 
     train_loader, test_loader = get_data_loaders(BATCH_SIZE)
