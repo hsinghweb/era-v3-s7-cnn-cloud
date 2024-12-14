@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
 
-dropout_value = 0.1
+dropout_value = 0.05
 
 class Net(nn.Module):
     def __init__(self):
@@ -11,7 +11,7 @@ class Net(nn.Module):
         # Input Block
         self.convblock1 = nn.Sequential(
             nn.Conv2d(in_channels=1, out_channels=10, kernel_size=(3, 3), padding=0, bias=False),
-            nn.ReLU(),
+            nn.GELU(),
             nn.BatchNorm2d(10),
             nn.Dropout(dropout_value)
         )
@@ -19,7 +19,7 @@ class Net(nn.Module):
         # CONVOLUTION BLOCK 1
         self.convblock2 = nn.Sequential(
             nn.Conv2d(in_channels=10, out_channels=14, kernel_size=(3, 3), padding=0, bias=False),
-            nn.ReLU(),
+            nn.GELU(),
             nn.BatchNorm2d(14),
             nn.Dropout(dropout_value)
         )
@@ -33,14 +33,14 @@ class Net(nn.Module):
         # CONVOLUTION BLOCK 2
         self.convblock4 = nn.Sequential(
             nn.Conv2d(in_channels=10, out_channels=14, kernel_size=(3, 3), padding=0, bias=False),
-            nn.ReLU(),            
+            nn.GELU(),            
             nn.BatchNorm2d(14),
             nn.Dropout(dropout_value)
         )
         
         self.convblock5 = nn.Sequential(
             nn.Conv2d(in_channels=14, out_channels=14, kernel_size=(3, 3), padding=0, bias=False),
-            nn.ReLU(),            
+            nn.GELU(),            
             nn.BatchNorm2d(14),
             nn.Dropout(dropout_value)
         )
@@ -48,14 +48,14 @@ class Net(nn.Module):
         # NEW CONVOLUTION BLOCK
         self.convblock6 = nn.Sequential(
             nn.Conv2d(in_channels=14, out_channels=12, kernel_size=(3, 3), padding=0, bias=False),
-            nn.ReLU(),            
+            nn.GELU(),            
             nn.BatchNorm2d(12),
             nn.Dropout(dropout_value)
         )
 
         self.convblock7 = nn.Sequential(
             nn.Conv2d(in_channels=12, out_channels=12, kernel_size=(3, 3), padding=1, bias=False),
-            nn.ReLU(),            
+            nn.GELU(),            
             nn.BatchNorm2d(12),
             nn.Dropout(dropout_value)
         )
@@ -69,16 +69,30 @@ class Net(nn.Module):
             nn.Conv2d(in_channels=12, out_channels=10, kernel_size=(1, 1), padding=0, bias=False),
         ) 
 
+        self.skip1 = nn.Conv2d(in_channels=10, out_channels=14, kernel_size=(1, 1), padding=0, bias=False)
+        self.skip2 = nn.Conv2d(in_channels=14, out_channels=12, kernel_size=(1, 1), padding=0, bias=False)
+
     def forward(self, x):
-        x = self.convblock1(x)
-        x = self.convblock2(x)
-        x = self.convblock3(x)
-        x = self.pool1(x)
-        x = self.convblock4(x)
-        x = self.convblock5(x)
-        x = self.convblock6(x)
-        x = self.convblock7(x)
-        x = self.gap(x)        
+        x1 = self.convblock1(x)
+        x2 = self.convblock2(x1)
+        x3 = self.convblock3(x2)
+        x = self.pool1(x3)
+        
+        x4 = self.convblock4(x)
+        x4 = x4 + self.skip1(F.interpolate(x, size=(x4.shape[2], x4.shape[3])))
+        
+        x5 = self.convblock5(x4)
+        x6 = self.convblock6(x5)
+        x6 = x6 + self.skip2(F.interpolate(x4, size=x6.shape[2:]))
+        
+        x7 = self.convblock7(x6)
+        
+        b, c, h, w = x7.shape
+        att = F.adaptive_avg_pool2d(x7, 1)
+        att = torch.sigmoid(att)
+        x7 = x7 * att
+        
+        x = self.gap(x7)        
         x = self.convblock8(x)
 
         x = x.view(-1, 10)
