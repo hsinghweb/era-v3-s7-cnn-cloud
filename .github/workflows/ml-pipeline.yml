@@ -1,0 +1,65 @@
+name: ML Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+
+    - name: Cache pip
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+        pip install tqdm numpy matplotlib torchsummary
+
+    - name: Train model
+      run: |
+        python src/train.py
+
+    - name: Upload training artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: training-results
+        path: |
+          model.pth
+          *.png
+        if-no-files-found: warn
+
+    - name: Upload model parameters
+      uses: actions/upload-artifact@v2
+      with:
+        name: model-info
+        path: |
+          best_model.pth
+          model_summary.txt
+        if-no-files-found: warn
+
+    - name: Check accuracy threshold
+      run: |
+        # Add a check to ensure accuracy meets threshold
+        python -c "
+        import torch
+        model = torch.load('best_model.pth')
+        accuracy = model.test_accuracy
+        assert accuracy >= 99.4, f'Accuracy {accuracy:.2f}% is below threshold of 99.4%'
+        " 
